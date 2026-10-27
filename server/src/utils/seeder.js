@@ -335,7 +335,7 @@ export const seedDatabase = async () => {
 };
 
 // Execute if run directly from CLI
-if (process.argv[1].endsWith('seeder.js')) {
+if (process.argv[1]?.endsWith('seeder.js')) {
   (async () => {
     try {
       await connectDB();

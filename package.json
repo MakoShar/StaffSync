@@ -2,7 +2,9 @@
   "name": "staffsync",
   "version": "1.0.0",
   "description": "StaffSync — Enterprise Human Resource Management System",
+  "type": "module",
   "scripts": {
+    "build": "cd client && npm install && npm run build",
     "install:server": "cd server && npm install",
     "install:client": "cd client && npm install",
     "install:all": "npm run install:server && npm run install:client",
@@ -11,6 +13,16 @@
     "seed": "cd server && npm run seed",
     "test:server": "cd server && npm test",
     "build:client": "cd client && npm run build"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5"
   },
   "keywords": ["hrms", "staffsync", "mern", "react", "express", "mongodb", "nodejs"]
 }

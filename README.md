@@ -368,9 +368,17 @@ npm run build
 ```
 
 ### Production Deployment Strategy
-1. **Containerized Deployment (Docker):** A multi-stage Docker build bundles the Vite frontend into an Nginx static server or serves it directly through Express static middleware.
-2. **Environment Isolation:** Secrets and Mongo URIs are securely passed via environment variables in production (AWS ECS, Render, Railway, or VPS).
-3. **Database:** Scalable MongoDB Atlas cluster with automated backups and replica sets.
+1. **Hosting on Vercel (Recommended):**
+   - **Unified Monorepo Deployment**: StaffSync includes pre-configured [vercel.json](file:///home/anoop/Documents/SkillWallet/vercel.json) and [api/index.js](file:///home/anoop/Documents/SkillWallet/api/index.js) for zero-config Vercel deployment.
+   - **Client SPA Routing**: Includes [client/vercel.json](file:///home/anoop/Documents/SkillWallet/client/vercel.json) ensuring all React Router routes resolve cleanly without 404 errors on page reload.
+   - **Serverless API**: The Express backend runs as a Vercel Serverless Function with cached MongoDB connections.
+   - **Required Vercel Environment Variables**:
+     - `MONGODB_URI`: Your MongoDB Atlas connection URI (`mongodb+srv://...`)
+     - `JWT_SECRET`: Secure random string (min 32 characters)
+     - `NODE_ENV`: `production`
+     - `CORS_ORIGIN`: Your production Vercel domain (e.g. `https://your-staffsync.vercel.app` or `*`)
+2. **Containerized Deployment (Docker):** A multi-stage Docker build bundles the Vite frontend into an Nginx static server or serves it directly through Express static middleware.
+3. **Database:** Scalable MongoDB Atlas cluster with automated backups and replica sets (ensure Network Access has `0.0.0.0/0` allowed in Atlas).
 
 ---
 

@@ -3,12 +3,23 @@ import { ENV } from './env.js';
 import { logger } from '../utils/logger.js';
 
 let mongoMemoryServer = null;
+let cachedConn = null;
 
 export const connectDB = async () => {
+  // If already connected (reused warm serverless instance on Vercel), return existing connection
+  if (mongoose.connection && mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+  if (cachedConn) {
+    return cachedConn;
+  }
+
   try {
     const conn = await mongoose.connect(ENV.MONGODB_URI, {
       serverSelectionTimeoutMS: 3000,
+      bufferCommands: false,
     });
+    cachedConn = conn;
     logger.info(`MongoDB Connected successfully to host: ${conn.connection.host}`);
     return conn;
   } catch (err) {
