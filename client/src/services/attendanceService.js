@@ -21,6 +21,16 @@ export const attendanceService = {
     return res.data;
   },
 
+  getMyCalendar: async () => {
+    const res = await api.get('/attendance/my-calendar');
+    return res.data;
+  },
+
+  resetTodayAttendance: async () => {
+    const res = await api.post('/attendance/reset-today');
+    return res.data;
+  },
+
   getTeamAttendance: async (params) => {
     const res = await api.get('/attendance/team', { params });
     return res.data;

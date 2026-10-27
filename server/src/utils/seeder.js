@@ -154,53 +154,58 @@ export const seedDatabase = async () => {
 
     logger.info('Users and Employees seeded successfully.');
 
-    // 5. Seed Historical and Today Attendance
+    // 5. Seed 30-Day Historical Attendance (Leave Today Open for Interactive Testing)
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    const checkInTimeToday = new Date(today);
-    checkInTimeToday.setUTCHours(9, 15, 0, 0);
+    // Seed past 29 days of realistic attendance history for Alex Rivers (EMP-003)
+    const attendanceRecords = [];
+    for (let i = 29; i >= 1; i--) {
+      const pastDate = new Date(today);
+      pastDate.setUTCDate(pastDate.getUTCDate() - i);
+      const dayOfWeek = pastDate.getUTCDay();
 
-    // Emp1 checked in today
-    await Attendance.create({
-      employee: emp1Employee._id,
-      date: today,
-      checkIn: checkInTimeToday,
-      status: 'Present',
-      remarks: 'On-time arrival',
-    });
+      // Skip Sundays (0) and Saturdays (6)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const inTime = new Date(pastDate);
+        inTime.setUTCHours(9, 0, 0, 0);
+        const outTime = new Date(pastDate);
+        outTime.setUTCHours(17, 30, 0, 0);
 
-    // Manager checked in and checked out today
-    const mgrCheckIn = new Date(today);
-    mgrCheckIn.setUTCHours(8, 55, 0, 0);
-    const mgrCheckOut = new Date(today);
-    mgrCheckOut.setUTCHours(17, 30, 0, 0);
-    await Attendance.create({
-      employee: managerEmployee._id,
-      date: today,
-      checkIn: mgrCheckIn,
-      checkOut: mgrCheckOut,
-      workHours: 8.58,
-      status: 'Present',
-    });
+        // Mix in a late day and a half day for visual variety
+        let status = 'Present';
+        let workHours = 8.5;
+        let remarks = 'Regular workday';
 
-    // Yesterday's attendance for Alex
-    const yesterday = new Date(today);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const alexInYesterday = new Date(yesterday);
-    alexInYesterday.setUTCHours(9, 0, 0, 0);
-    const alexOutYesterday = new Date(yesterday);
-    alexOutYesterday.setUTCHours(17, 30, 0, 0);
-    await Attendance.create({
-      employee: emp1Employee._id,
-      date: yesterday,
-      checkIn: alexInYesterday,
-      checkOut: alexOutYesterday,
-      workHours: 8.5,
-      status: 'Present',
-    });
+        if (i === 7) {
+          status = 'Late';
+          inTime.setUTCHours(10, 15, 0, 0);
+          workHours = 7.25;
+          remarks = 'Traffic delay';
+        } else if (i === 15) {
+          status = 'Half Day';
+          outTime.setUTCHours(13, 0, 0, 0);
+          workHours = 4.0;
+          remarks = 'Personal emergency afternoon';
+        }
 
-    logger.info('Sample attendance records seeded.');
+        attendanceRecords.push({
+          employee: emp1Employee._id,
+          date: pastDate,
+          checkIn: inTime,
+          checkOut: outTime,
+          workHours,
+          status,
+          remarks,
+        });
+      }
+    }
+
+    if (attendanceRecords.length > 0) {
+      await Attendance.insertMany(attendanceRecords);
+    }
+
+    logger.info(`Seeded ${attendanceRecords.length} historical attendance days for Alex Rivers.`);
 
     // 6. Seed Leaves
     const leaveStart = new Date(today);

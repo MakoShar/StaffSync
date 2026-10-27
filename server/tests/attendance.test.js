@@ -132,6 +132,42 @@ describe('Attendance Management Suite', () => {
     expect(res.body.total).toBeGreaterThanOrEqual(2);
   });
 
+  it('GET /api/v1/attendance/my-calendar should return 30-day matrix and summary', async () => {
+    const res = await request(app)
+      .get('/api/v1/attendance/my-calendar')
+      .set('Authorization', `Bearer ${emp2Token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.days.length).toBe(30);
+    expect(res.body.summary).toBeDefined();
+    expect(res.body.summary.totalDays).toBe(30);
+    expect(res.body.summary.workingDays).toBeGreaterThan(0);
+  });
+
+  it('POST /api/v1/attendance/reset-today should clear today attendance for employee', async () => {
+    // 1. Check in today
+    await request(app)
+      .post('/api/v1/attendance/check-in')
+      .set('Authorization', `Bearer ${emp2Token}`)
+      .send({ remarks: 'Checking in' });
+
+    // 2. Reset today
+    const resetRes = await request(app)
+      .post('/api/v1/attendance/reset-today')
+      .set('Authorization', `Bearer ${emp2Token}`);
+
+    expect(resetRes.status).toBe(200);
+    expect(resetRes.body.success).toBe(true);
+
+    // 3. Verify today status is cleared
+    const statusRes = await request(app)
+      .get('/api/v1/attendance/today')
+      .set('Authorization', `Bearer ${emp2Token}`);
+
+    expect(statusRes.body.checkedIn).toBe(false);
+  });
+
   it('GET /api/v1/attendance/all should forbid regular Employee with 403', async () => {
     const res = await request(app)
       .get('/api/v1/attendance/all')

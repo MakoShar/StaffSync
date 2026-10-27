@@ -1,5 +1,6 @@
 import Attendance from '../models/Attendance.js';
 import Employee from '../models/Employee.js';
+import Leave from '../models/Leave.js';
 
 // Helper to normalize a date to UTC start-of-day (00:00:00.000)
 const getNormalizedDate = (d = new Date()) => {
@@ -8,7 +9,7 @@ const getNormalizedDate = (d = new Date()) => {
   return normalized;
 };
 
-// @desc    Record employee daily check-in
+// @desc    Record employee daily check-in (Mark Present)
 // @route   POST /api/v1/attendance/check-in
 // @access  Private (All authenticated employees)
 export const checkIn = async (req, res, next) => {
@@ -35,9 +36,8 @@ export const checkIn = async (req, res, next) => {
     }
 
     const now = new Date();
-    // Check if late (e.g. after 09:30 local/UTC time)
-    const isLate = now.getUTCHours() > 9 || (now.getUTCHours() === 9 && now.getUTCMinutes() > 30);
-    const status = isLate ? 'Late' : 'Present';
+    // Default to 'Present' unless specified otherwise
+    const status = req.body.status || 'Present';
 
     const attendance = await Attendance.create({
       employee: req.employee._id,
@@ -312,3 +312,155 @@ export const getAllAttendance = async (req, res, next) => {
     next(err);
   }
 };
+
+// @desc    Get 30-day calendar attendance matrix for employee
+// @route   GET /api/v1/attendance/my-calendar
+// @access  Private (Self)
+export const getMyCalendar = async (req, res, next) => {
+  try {
+    if (!req.employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'No employee profile linked to current user',
+      });
+    }
+
+    const today = getNormalizedDate();
+    const startDate = new Date(today);
+    startDate.setUTCDate(startDate.getUTCDate() - 29); // 30 days total (today - 29 to today)
+
+    // 1. Fetch all attendance records in this range
+    const attendanceRecords = await Attendance.find({
+      employee: req.employee._id,
+      date: { $gte: startDate, $lte: today },
+    });
+
+    const attendanceMap = new Map();
+    attendanceRecords.forEach((rec) => {
+      const key = rec.date.toISOString().split('T')[0];
+      attendanceMap.set(key, rec);
+    });
+
+    // 2. Fetch approved leaves overlapping this range
+    const approvedLeaves = await Leave.find({
+      employee: req.employee._id,
+      status: 'Approved',
+      startDate: { $lte: today },
+      endDate: { $gte: startDate },
+    });
+
+    // Build the 30-day array
+    const days = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    let presentCount = 0;
+    let lateCount = 0;
+    let halfDayCount = 0;
+    let leaveCount = 0;
+    let absentCount = 0;
+    let totalWorkHours = 0;
+
+    for (let i = 29; i >= 0; i--) {
+      const current = new Date(today);
+      current.setUTCDate(current.getUTCDate() - i);
+      const dateStr = current.toISOString().split('T')[0];
+      const dayOfWeekIdx = current.getUTCDay();
+      const isWeekend = dayOfWeekIdx === 0 || dayOfWeekIdx === 6;
+      const isToday = i === 0;
+
+      const record = attendanceMap.get(dateStr);
+
+      // Check if on approved leave
+      const onLeave = approvedLeaves.some((l) => {
+        const lStart = getNormalizedDate(l.startDate);
+        const lEnd = getNormalizedDate(l.endDate);
+        return current >= lStart && current <= lEnd;
+      });
+
+      let status = 'Absent';
+      if (record) {
+        status = record.status;
+        if (record.status === 'Present') presentCount++;
+        else if (record.status === 'Late') lateCount++;
+        else if (record.status === 'Half Day') halfDayCount++;
+        totalWorkHours += record.workHours || 0;
+      } else if (onLeave) {
+        status = 'On Leave';
+        leaveCount++;
+      } else if (isWeekend) {
+        status = 'Weekend';
+      } else if (isToday) {
+        status = 'Not Marked';
+      } else {
+        status = 'Absent';
+        absentCount++;
+      }
+
+      days.push({
+        date: dateStr,
+        dayNumber: current.getUTCDate(),
+        month: monthNames[current.getUTCMonth()],
+        dayOfWeek: dayNames[dayOfWeekIdx],
+        formattedDate: `${monthNames[current.getUTCMonth()]} ${current.getUTCDate()}, ${current.getUTCFullYear()}`,
+        isWeekend,
+        isToday,
+        status,
+        checkIn: record?.checkIn || null,
+        checkOut: record?.checkOut || null,
+        workHours: record?.workHours || 0,
+        remarks: record?.remarks || (onLeave ? 'Approved Leave' : isWeekend ? 'Weekend Off' : ''),
+      });
+    }
+
+    const workingDays = days.filter((d) => !d.isWeekend).length;
+    const effectivePresent = presentCount + lateCount + halfDayCount * 0.5;
+    const attendancePercentage = workingDays > 0 ? Math.round((effectivePresent / workingDays) * 100) : 0;
+
+    res.status(200).json({
+      success: true,
+      summary: {
+        totalDays: 30,
+        workingDays,
+        presentDays: presentCount,
+        lateDays: lateCount,
+        halfDays: halfDayCount,
+        leaveDays: leaveCount,
+        absentDays: absentCount,
+        totalWorkHours: parseFloat(totalWorkHours.toFixed(2)),
+        attendancePercentage,
+      },
+      days,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Reset today's attendance for the employee (convenient test utility)
+// @route   POST /api/v1/attendance/reset-today
+// @access  Private (Self)
+export const resetTodayAttendance = async (req, res, next) => {
+  try {
+    if (!req.employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'No employee profile linked to current user',
+      });
+    }
+
+    const today = getNormalizedDate();
+    await Attendance.deleteOne({
+      employee: req.employee._id,
+      date: today,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Today's attendance has been reset. You can now mark present again.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

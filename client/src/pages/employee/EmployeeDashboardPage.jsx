@@ -87,6 +87,23 @@ export default function EmployeeDashboardPage() {
     }
   };
 
+  const handleResetToday = async () => {
+    setAttendanceActionLoading(true);
+    try {
+      await attendanceService.resetTodayAttendance();
+      setNotification({ open: true, message: "Today's attendance has been reset. You can now mark present.", severity: 'info' });
+      fetchDashboard();
+    } catch (err) {
+      setNotification({
+        open: true,
+        message: err.response?.data?.message || 'Failed to reset attendance',
+        severity: 'error',
+      });
+    } finally {
+      setAttendanceActionLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <LoadingSpinner message="Loading employee dashboard..." />;
   }
@@ -99,13 +116,22 @@ export default function EmployeeDashboardPage() {
         title="Employee Portal"
         subtitle="Review your attendance status, leave balances, and workplace development programs."
         action={
-          <Button
-            variant="contained"
-            startIcon={<EventBusyIcon />}
-            onClick={() => navigate('/app/employee/leaves')}
-          >
-            Apply for Leave
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button
+              variant="outlined"
+              startIcon={<AccessTimeIcon />}
+              onClick={() => navigate('/app/employee/attendance')}
+            >
+              My Attendance Calendar
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<EventBusyIcon />}
+              onClick={() => navigate('/app/employee/leaves')}
+            >
+              Apply for Leave
+            </Button>
+          </Box>
         }
       />
 
@@ -157,9 +183,23 @@ export default function EmployeeDashboardPage() {
         {/* Daily Clock-In / Clock-Out Widget */}
         <Grid item xs={12} md={5}>
           <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 3, height: '100%' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-              Today's Attendance
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Today's Attendance
+              </Typography>
+              {todayAttendance?.checkedIn && (
+                <Button
+                  size="small"
+                  variant="text"
+                  color="inherit"
+                  sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
+                  onClick={handleResetToday}
+                  disabled={attendanceActionLoading}
+                >
+                  Reset (Demo)
+                </Button>
+              )}
+            </Box>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
               {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </Typography>
@@ -168,26 +208,26 @@ export default function EmployeeDashboardPage() {
               sx={{
                 p: 2.5,
                 borderRadius: 2,
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
+                backgroundColor: todayAttendance?.checkedIn ? '#F0FDF4' : '#F8FAFC',
+                border: todayAttendance?.checkedIn ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
                 mb: 3,
                 textAlign: 'center',
               }}
             >
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', letterSpacing: '0.5px' }}>
                 CURRENT PRESENCE STATUS
               </Typography>
-              <Box sx={{ my: 1 }}>
+              <Box sx={{ my: 1.5 }}>
                 <StatusChip status={todayAttendance?.status || 'Not Checked In'} size="medium" />
               </Box>
               {todayAttendance?.checkInTime && (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                  Checked in at: <strong>{new Date(todayAttendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                  Checked in at: <strong style={{ color: '#0F172A' }}>{new Date(todayAttendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
                 </Typography>
               )}
               {todayAttendance?.checkOutTime && (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                  Checked out at: <strong>{new Date(todayAttendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem', mt: 0.5 }}>
+                  Checked out at: <strong style={{ color: '#0F172A' }}>{new Date(todayAttendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
                 </Typography>
               )}
             </Box>
@@ -205,14 +245,21 @@ export default function EmployeeDashboardPage() {
                 <Button
                   fullWidth
                   variant="contained"
-                  color="primary"
+                  color="success"
                   size="large"
-                  startIcon={<LoginIcon />}
+                  startIcon={<CheckCircleOutlineIcon />}
                   disabled={attendanceActionLoading}
                   onClick={handleCheckIn}
-                  sx={{ py: 1.25, fontWeight: 700 }}
+                  sx={{
+                    py: 1.4,
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    backgroundColor: '#16A34A',
+                    '&:hover': { backgroundColor: '#15803D' },
+                    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+                  }}
                 >
-                  {attendanceActionLoading ? 'Recording Check-In...' : 'Mark Check-In'}
+                  {attendanceActionLoading ? 'Recording Attendance...' : 'Mark Present'}
                 </Button>
               </Box>
             )}
@@ -243,10 +290,33 @@ export default function EmployeeDashboardPage() {
             )}
 
             {todayAttendance?.checkedIn && todayAttendance?.checkedOut && (
-              <Alert severity="success" sx={{ borderRadius: 2 }}>
-                You have completed your attendance check-in and check-out for today!
-              </Alert>
+              <Box>
+                <Alert severity="success" sx={{ borderRadius: 2, mb: 2 }}>
+                  You have completed your attendance check-in and check-out for today!
+                </Alert>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  onClick={handleResetToday}
+                  disabled={attendanceActionLoading}
+                >
+                  Reset Today's Attendance (Test Again)
+                </Button>
+              </Box>
             )}
+
+            <Divider sx={{ my: 2.5 }} />
+
+            <Button
+              fullWidth
+              variant="text"
+              color="primary"
+              onClick={() => navigate('/app/employee/attendance')}
+              sx={{ fontWeight: 600, fontSize: '0.875rem' }}
+            >
+              View Full 30-Day Attendance Calendar →
+            </Button>
           </Paper>
         </Grid>
 
