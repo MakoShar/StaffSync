@@ -199,11 +199,25 @@ StaffSync uses normalized relational references inside MongoDB via Mongoose:
 
 ---
 
-## 8. Installation Prerequisites
+## 8. System Prerequisites & Specifications
 
-- **Node.js:** v18.0.0 or higher
-- **npm:** v9.0.0 or higher
-- **MongoDB:** A running MongoDB instance (local or MongoDB Atlas connection URI), or MongoDB Memory Server during test execution.
+To ensure smooth development, deployment, and usage of the StaffSync HRM Tool Web Application, the following software and hardware requirements must be met:
+
+### 1. Software Requirements
+- **Operating System:** Windows 10/11, macOS, or Linux (cross-platform support).
+- **Node.js (v16 or above):** Runtime environment for executing frontend tooling and server-side Express API routing.
+- **npm (v8 or above):** Package manager required to manage frontend and backend dependencies.
+- **React.js:** Single-page application library for building dynamic, responsive UI.
+- **Express.js:** Lightweight web framework for RESTful API endpoints.
+- **MongoDB:** Community Server or MongoDB Atlas cluster for document persistence (with embedded `mongodb-memory-server` fallback for zero-config development).
+- **Web Browser:** Google Chrome or Mozilla Firefox (latest version) for real-time interface rendering.
+- **Development Tools:** Visual Studio Code (recommended editor) and Postman / REST Client (for API endpoint testing).
+
+### 2. Hardware Requirements
+- **Processor:** Intel Core i5 (8th Gen or above) / AMD Ryzen 5 or better.
+- **RAM:** Minimum 8 GB (16 GB recommended) for concurrent dev servers, IDE, and browser testing.
+- **Storage:** At least 1 GB free disk space for package dependencies, MongoDB storage, and builds.
+- **Display Resolution:** 1366x768 or higher recommended for optimal layout and dashboard visibility.
 
 ---
 
@@ -239,7 +253,7 @@ VITE_API_BASE_URL=http://localhost:5000/api/v1
 ### 1. Root Installation (All dependencies)
 ```bash
 # Clone the repository
-git clone https://github.com/organization/StaffSync.git
+git clone https://github.com/MakoShar/StaffSync.git
 cd StaffSync
 
 # Install root, backend, and frontend packages
